@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#e9dfce">
+<title>Mein Weg in die Freiheit</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    background:#e9dfce; font-family:Georgia,serif; text-align:center;
+    padding:16px; color:#594735; margin:0;
+  }
+  .paper {
+    max-width:390px; margin:18px auto; padding:26px 18px;
+    background:#fff8e9; border:2px solid #bba17d; border-radius:8px;
+    box-shadow:5px 7px 14px #8e806b;
+  }
+  h1 {font-size:25px; margin:8px 0;}
+  .number {font-size:clamp(76px, 22vw, 100px); color:#a33d32;
+    font-weight:bold; margin:12px 0; line-height:1.1;}
+  .stamp {border:3px solid #a33d32; color:#a33d32; padding:10px;
+    display:inline-block; font-weight:bold; transform:rotate(-4deg);}
+  .small {font-size:14px;color:#927d61;}
+  .settings {max-width:390px; margin:18px auto; padding:18px;
+    background:#fff8e9; border:1px solid #bba17d; border-radius:8px;
+    text-align:left; box-shadow:3px 4px 9px #8e806b;}
+  .settings h2 {text-align:center; font-size:20px; margin:4px 0 12px;}
+  label {display:block; font-size:14px; margin:10px 0 4px;}
+  input {font:16px Arial,sans-serif; padding:9px; width:100%;
+    border:1px solid #bba17d; border-radius:5px; background:#fffdf8; color:#594735;}
+  button {font: bold 15px Arial,sans-serif; padding:10px 14px; margin:8px 4px 0 0;
+    border:0; border-radius:5px; background:#a33d32; color:white;}
+  button.secondary {background:#8b775d;}
+  .period {display:grid; grid-template-columns:1fr 1fr auto; gap:7px; align-items:end;
+    padding:9px 0; border-bottom:1px solid #e1d3bd;}
+  .period label {margin:0 0 4px;}
+  .period button {margin:0; padding:9px 10px;}
+  .hint {font:13px Arial,sans-serif; color:#806d55; line-height:1.45;}
+  #status {min-height:18px; font:13px Arial,sans-serif; color:#527047;}
+  @media (max-width:350px) {
+    .period {grid-template-columns:1fr 1fr;}
+    .period button {grid-column:1 / -1;}
+  }
+</style>
+</head>
+<body>
+<div class="paper">
+  <div class="small">MEIN PERSÖNLICHER</div>
+  <h1>RENTEN-ABREISSKALENDER</h1>
+  <p>Jeder Tag bringt mich näher!</p>
+  <hr>
+  <div class="small">NOCH VERBLEIBENDE</div>
+  <div class="number" id="count">...</div>
+  <h2>ARBEITSTAGE</h2>
+  <div class="stamp">DER RUHESTAND RUFT!</div>
+  <hr>
+  <h2>06. JULI 2027</h2>
+  <p>Mein letzter Arbeitstag</p>
+  <h2>01. AUGUST 2027</h2>
+  <p>ENDLICH RENTE! ❤️</p>
+  <hr>
+  <p id="date"></p>
+  <p class="small">Meine Arbeitstage: Mo · Di · Do</p>
+  <p id="saying">Ein Tag weniger bis zur Freiheit!</p>
+</div>
+
+<section class="settings">
+  <h2>Meine Urlaubseinstellungen</h2>
+  <p class="hint">Hier kannst du deine Urlaubszeiträume ändern oder weitere hinzufügen. Die Änderungen werden auf diesem Gerät im Browser gespeichert.</p>
+  <div id="periods"></div>
+  <button type="button" id="add">+ Urlaub hinzufügen</button>
+  <button type="button" class="secondary" id="save">Einstellungen speichern</button>
+  <p id="status" aria-live="polite"></p>
+  <p class="hint">Feiertage sind derzeit fest eingetragen: 29.03., 06.05. und 17.05.2027.</p>
+</section>
+
+<script>
+const STORAGE_KEY = "rentenKalenderUrlaub_v1";
+const holidays = ["2027-03-29", "2027-05-06", "2027-05-17"];
+const defaultVacations = [
+  {start:"2026-12-01", end:"2026-12-31"},
+  {start:"2027-07-07", end:"2027-08-01"}
+];
+let vacations = loadVacations();
+
+function loadVacations() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) return parsed.filter(v => v && v.start && v.end);
+    }
+  } catch (e) {}
+  return defaultVacations.map(v => ({...v}));
+}
+function iso(d) {
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function isVacation(s) {
+  return vacations.some(v => s >= v.start && s <= v.end);
+}
+function countDays() {
+  const d = new Date();
+  d.setHours(0,0,0,0);
+  const last = new Date(2027,6,6);
+  let n = 0;
+  while (d <= last) {
+    const s = iso(d);
+    if ([1,2,4].includes(d.getDay()) && !isVacation(s) && !holidays.includes(s)) n++;
+    d.setDate(d.getDate()+1);
+  }
+  document.getElementById("count").textContent = n;
+  document.getElementById("date").textContent = "Heute ist der " + new Date().toLocaleDateString("de-DE");
+  const sayings = [
+    "Ein Tag weniger bis zur Freiheit!",
+    "Du bist deinem Ziel wieder näher!",
+    "Bald gehört deine Zeit ganz dir!",
+    "Das schaffst du! ❤️"
+  ];
+  const index = Math.floor(Date.now()/86400000) % sayings.length;
+  document.getElementById("saying").textContent = sayings[index];
+}
+function renderPeriods() {
+  const host = document.getElementById("periods");
+  host.innerHTML = "";
+  vacations.forEach((v, i) => {
+    const row = document.createElement("div");
+    row.className = "period";
+    const startWrap = document.createElement("div");
+    const startLabel = document.createElement("label");
+    startLabel.textContent = "Von";
+    const start = document.createElement("input");
+    start.type = "date"; start.value = v.start; start.setAttribute("aria-label", "Urlaub von");
+    start.addEventListener("change", () => { vacations[i].start = start.value; });
+    startLabel.appendChild(start); startWrap.appendChild(startLabel);
+    const endWrap = document.createElement("div");
+    const endLabel = document.createElement("label");
+    endLabel.textContent = "Bis";
+    const end = document.createElement("input");
+    end.type = "date"; end.value = v.end; end.setAttribute("aria-label", "Urlaub bis");
+    end.addEventListener("change", () => { vacations[i].end = end.value; });
+    endLabel.appendChild(end); endWrap.appendChild(endLabel);
+    const remove = document.createElement("button");
+    remove.type = "button"; remove.className = "secondary"; remove.textContent = "Entfernen";
+    remove.addEventListener("click", () => { vacations.splice(i,1); renderPeriods(); });
+    row.append(startWrap, endWrap, remove);
+    host.appendChild(row);
+  });
+}
+function saveSettings() {
+  for (const v of vacations) {
+    if (!v.start || !v.end || v.start > v.end) {
+      document.getElementById("status").textContent = "Bitte prüfe die Urlaubszeiträume: Das Bis-Datum darf nicht vor dem Von-Datum liegen.";
+      return;
+    }
+  }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(vacations));
+    document.getElementById("status").textContent = "Gespeichert! Deine Urlaubseinstellungen bleiben in diesem Browser erhalten.";
+    countDays();
+  } catch (e) {
+    document.getElementById("status").textContent = "Der Browser kann die Einstellungen leider nicht speichern.";
+  }
+}
+document.getElementById("add").addEventListener("click", () => {
+  vacations.push({start:"2027-01-01", end:"2027-01-01"});
+  renderPeriods();
+});
+document.getElementById("save").addEventListener("click", saveSettings);
+renderPeriods();
+countDays();
+</script>
+</body>
+</html>
